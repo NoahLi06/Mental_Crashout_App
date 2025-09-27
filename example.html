@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tension Release Chamber</title>
+    <!-- Load Tailwind CSS for utility classes and Tone.js for sound -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --calm-blue: #3b82f6; /* Tailwind blue-500 */
+        --angry-red: #ef4444; /* Tailwind red-500 */
+      }
+
+      body {
+        font-family: "Inter", sans-serif;
+        background-color: #f3f4f6;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        padding: 20px;
+      }
+
+      .container {
+        max-width: 400px;
+        width: 100%;
+        text-align: center;
+      }
+
+      #stressBox {
+        width: min(300px, 80vw);
+        height: min(300px, 80vw);
+        margin: 40px auto;
+        border-radius: 24px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 2.5rem;
+        font-weight: 900; /* Extra bold text */
+        color: white;
+        cursor: pointer;
+        transition: all 0.15s ease-out;
+        user-select: none;
+        touch-action: manipulation;
+
+        /* Initial 3D appearance */
+        transform-style: preserve-3d;
+        transform: perspective(1000px) rotateX(7deg) rotateY(-7deg) scale(1);
+
+        /* Enhanced Shadow for Depth */
+        box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.3),
+          0 5px 15px -3px rgba(0, 0, 0, 0.15),
+          inset 0 0 10px rgba(255, 255, 255, 0.5);
+        border: 4px solid rgba(255, 255, 255, 0.7);
+      }
+
+      #stressBox:hover {
+        transform: perspective(1000px) rotateX(5deg) rotateY(-5deg) scale(1.01);
+        opacity: 0.98;
+      }
+
+      #stressBox:active {
+        transform: perspective(1000px) rotateX(10deg) rotateY(-10deg)
+          scale(0.95);
+        box-shadow: none;
+      }
+
+      /* Message Box Styling */
+      #messageBox {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.7);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+      }
+
+      .message-content {
+        background-color: white;
+        padding: 40px;
+        border-radius: 16px;
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+        text-align: center;
+        max-width: 90%;
+        animation: fadeInScale 0.3s ease-out;
+      }
+
+      @keyframes fadeInScale {
+        from {
+          opacity: 0;
+          transform: scale(0.8);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+
+      /* Particle animation for sophistication */
+      @keyframes particle-fade-out {
+        0% {
+          transform: translate(0, 0) rotate(0deg) scale(1);
+          opacity: 1;
+        }
+        100% {
+          transform: translate(var(--dx), var(--dy)) rotate(var(--rot)) scale(0);
+          opacity: 0;
+        }
+      }
+
+      .particle {
+        position: absolute;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background-color: var(--angry-red);
+        pointer-events: none;
+        animation: particle-fade-out 0.6s cubic-bezier(0.17, 0.84, 0.44, 1)
+          forwards;
+        z-index: 500;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1 class="text-4xl font-black text-gray-800 mb-2">TENSION CHAMBER</h1>
+      <p class="text-gray-600 mb-6">
+        Unleash your frustration. Crush the block! (Click or tap)
+      </p>
+
+      <!-- The interactive stress element -->
+      <div id="stressBox">SMASH STRESS</div>
+
+      <!-- Feedback counters -->
+      <div class="flex justify-center space-x-4 text-lg">
+        <div
+          class="bg-white p-3 rounded-xl shadow-lg border border-gray-200 min-w-[120px]"
+        >
+          Hits: <span id="hitCount" class="font-bold text-blue-600">0</span>
+        </div>
+        <div
+          class="bg-white p-3 rounded-xl shadow-lg border border-gray-200 min-w-[120px]"
+        >
+          Impact:
+          <span id="remainingCount" class="font-bold text-red-600">0</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Custom Modal/Message Box -->
+    <div id="messageBox">
+      <div class="message-content">
+        <h2 id="messageTitle" class="text-3xl font-black mb-3 text-green-700">
+          TENSION DISSIPATED
+        </h2>
+        <p id="messageText" class="mb-6 text-gray-700">
+          The stress is gone. You successfully channeled your energy. Take a
+          deep, calming breath before continuing.
+        </p>
+        <button
+          id="resetButton"
+          class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-full transition duration-200 shadow-xl hover:shadow-2xl transform hover:scale-105"
+        >
+          Reset Chamber
+        </button>
+      </div>
+    </div>
+
+    <script>
+      // Global state variables
+      const maxHits = 30; // Increased hits for a longer, more impactful experience
+      let currentHits = 0;
+      let isBroken = false;
+
+      // DOM elements
+      const stressBox = document.getElementById("stressBox");
+      const hitCountElement = document.getElementById("hitCount");
+      const remainingCountElement = document.getElementById("remainingCount");
+      const messageBox = document.getElementById("messageBox");
+      const resetButton = document.getElementById("resetButton");
+
+      // --- Audio Setup (Tone.js) ---
+      let synth = null;
+      let panner = null;
+      let crusher = null;
+
+      const initializeAudio = async () => {
+        if (synth === null) {
+          // Must be called after a user interaction
+          await Tone.start();
+
+          // 1. Distortion/Crusher effect - increases the 'anger' of the sound
+          crusher = new Tone.Chebyshev(1).toDestination();
+
+          // 2. Stereo Panner
+          panner = new Tone.Panner().connect(crusher);
+
+          // 3. Membrane Synth (Thud)
+          synth = new Tone.MembraneSynth({
+            pitchDecay: 0.03,
+            octaves: 8,
+            envelope: {
+              attack: 0.001,
+              decay: 0.3,
+              sustain: 0.0,
+              release: 0.05,
+            },
+          }).connect(panner);
+
+          // Set initial volume lower to allow distortion to build up
+          Tone.Destination.volume.value = -12;
+          console.log("Sophisticated Audio Initialized with Distortion.");
+        }
+      };
+
+      // --- Particle Effect Logic ---
+
+      // Function to generate particles on hit
+      const createParticles = () => {
+        const rect = stressBox.getBoundingClientRect();
+        // Get center point of the box for particle origin
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+
+        const numParticles = 8;
+        for (let i = 0; i < numParticles; i++) {
+          const particle = document.createElement("div");
+          particle.classList.add("particle");
+
+          // Random velocity and direction for scatter effect
+          const angle = Math.random() * 2 * Math.PI;
+          const distance = 50 + Math.random() * 70; // Larger spread
+
+          // Set CSS variables for animation
+          particle.style.setProperty("--dx", `${Math.cos(angle) * distance}px`);
+          particle.style.setProperty("--dy", `${Math.sin(angle) * distance}px`);
+          particle.style.setProperty("--rot", `${Math.random() * 360}deg`);
+
+          // Position the particle at the center of the box
+          particle.style.left = `${centerX}px`;
+          particle.style.top = `${centerY}px`;
+
+          // Random color slightly varied around red
+          const red = 239;
+          const r = red + Math.floor(Math.random() * 30 - 15);
+          particle.style.backgroundColor = `rgb(${r}, 68, 68)`;
+
+          document.body.appendChild(particle);
+
+          // Remove particle after animation ends (600ms)
+          setTimeout(() => {
+            particle.remove();
+          }, 600);
+        }
+      };
+
+      // --- Game Logic ---
+
+      const updateDisplay = () => {
+        hitCountElement.textContent = currentHits;
+        remainingCountElement.textContent = Math.max(0, maxHits - currentHits);
+
+        const progress = currentHits / maxHits;
+
+        // Interpolate color from calm blue (0) to angry red (1)
+        const r = Math.round(59 + (239 - 59) * progress);
+        const g = Math.round(130 + (68 - 130) * progress);
+        const b = Math.round(246 + (68 - 246) * progress);
+
+        // Interpolate the 3D rotation slightly to give a sense of wear
+        const rotX = 7 + progress * 5; // 7deg up to 12deg
+        const rotY = -7 - progress * 5; // -7deg down to -12deg
+
+        stressBox.style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
+
+        // Update 3D transformation
+        stressBox.style.transform = `perspective(1000px) rotateX(${rotX}deg) rotateY(${rotY}deg)`;
+
+        // Update audio distortion based on progress
+        if (crusher) {
+          // Increase distortion amount (Chebyshev order) from 1 (subtle) to 50 (heavy)
+          crusher.order = 1 + progress * 49;
+        }
+
+        // Change sophisticated text feedback
+        if (progress >= 1.0) {
+          stressBox.textContent = "ERADICATED";
+        } else if (progress > 0.8) {
+          stressBox.textContent = "CORE BREACH";
+        } else if (progress > 0.5) {
+          stressBox.textContent = "CRUSHING IT!";
+        } else if (progress > 0.2) {
+          stressBox.textContent = "TENSION MOUNTS";
+        } else {
+          stressBox.textContent = "SMASH STRESS";
+        }
+      };
+
+      const playHitSound = () => {
+        if (synth) {
+          // Randomize a low, punchy pitch
+          const pitch = 80 + Math.random() * 50;
+          synth.triggerAttackRelease(pitch, "16n");
+
+          // Randomize pan for stereo effect
+          const panValue = Math.random() * 1.5 - 0.75; // between -0.75 (left) and 0.75 (right)
+          panner.pan.value = panValue;
+        }
+      };
+
+      const handleHit = (event) => {
+        initializeAudio();
+
+        if (isBroken) return;
+
+        currentHits++;
+        playHitSound();
+        createParticles();
+
+        if (currentHits >= maxHits) {
+          currentHits = maxHits;
+          isBroken = true;
+          stressBox.textContent = "...COMPLETE...";
+          stressBox.style.backgroundColor = "#4b5563";
+          stressBox.style.transform =
+            "perspective(1000px) rotateX(0deg) rotateY(0deg) scale(0.8)";
+          stressBox.style.opacity = "0.7";
+          stressBox.style.cursor = "default";
+
+          messageBox.style.display = "flex";
+        } else {
+          // Add a quick, high-impact jolt effect without relying on CSS transition
+          stressBox.style.transition = "none";
+          stressBox.style.transform += " scale(0.9)"; // Temporarily shrink on hit
+
+          setTimeout(() => {
+            stressBox.style.transition = "all 0.15s ease-out";
+            updateDisplay();
+          }, 50);
+        }
+
+        updateDisplay();
+      };
+
+      const resetGame = () => {
+        currentHits = 0;
+        isBroken = false;
+        stressBox.style.cursor = "pointer";
+        stressBox.style.opacity = "1";
+
+        messageBox.style.display = "none";
+
+        updateDisplay();
+      };
+
+      // --- Event Listeners ---
+
+      stressBox.addEventListener("click", handleHit);
+      resetButton.addEventListener("click", resetGame);
+
+      // Initialize display on load
+      window.onload = resetGame;
+
+      // Add one-time listener to initialize audio context on first touch/click anywhere
+      document.body.addEventListener("click", initializeAudio, { once: true });
+      document.body.addEventListener("touchstart", initializeAudio, {
+        once: true,
+      });
+    </script>
+  </body>
+</html>
