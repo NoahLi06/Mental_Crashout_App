@@ -1,2 +1,2 @@
 # Sustainability
-MHacks_2025
+MHacks 2025
